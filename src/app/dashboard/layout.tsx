@@ -18,7 +18,7 @@ export default function DashboardLayout({
     // Check if user is logged in
     const storedPin = localStorage.getItem("operatorPin");
     if (!storedPin) {
-      router.push("/");
+      router.push("/login");
     } else {
       setPin(storedPin);
     }
@@ -26,7 +26,7 @@ export default function DashboardLayout({
 
   const handleLogout = () => {
     localStorage.removeItem("operatorPin");
-    router.push("/");
+    router.push("/login");
   };
 
   if (!pin) return null; // Or a loading spinner
