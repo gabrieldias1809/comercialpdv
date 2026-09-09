@@ -17,6 +17,7 @@ export interface SalePayment {
 
 export interface SaleTransaction {
   id: string;
+  storeId: string;
   items: SaleItem[];
   payments: SalePayment[];
   totalAmount: number;
@@ -27,6 +28,7 @@ export interface SaleTransaction {
 
 export interface Operator {
   pin: string;
+  storeId: string;
   name: string;
   role: OperatorRole;
 }
@@ -36,16 +38,17 @@ const db = new Dexie('MercadinhoDB') as Dexie & {
   operators: EntityTable<Operator, 'pin'>;
 };
 
-// Version 3 adds the operators table
-db.version(3).stores({
-  transactions: 'id, timestamp, synced, operatorPin',
-  operators: 'pin, role'
+// Version 4 adds storeId
+db.version(4).stores({
+  transactions: 'id, storeId, timestamp, synced, operatorPin',
+  operators: 'pin, storeId, role'
 });
 
 // Seed default admin operator if none exists
 db.on('populate', () => {
   db.operators.add({
     pin: '0000',
+    storeId: 'demo-store',
     name: 'Gerente',
     role: 'admin'
   });

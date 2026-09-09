@@ -93,10 +93,12 @@ export default function DashboardPage() {
 
   const finalizeSale = async (finalPayments: SalePayment[]) => {
     const operatorPin = localStorage.getItem("operatorPin") || "0000";
+    const storeId = localStorage.getItem("storeId") || "demo-store";
 
     try {
       await db.transactions.add({
         id: uuidv4(),
+        storeId,
         items,
         payments: finalPayments,
         totalAmount,

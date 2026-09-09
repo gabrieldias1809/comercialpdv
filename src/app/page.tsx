@@ -47,9 +47,16 @@ export default function LandingPage() {
         {/* Call to action for those who just want to access online */}
         <Link 
           href="/login" 
-          className="w-full p-4 rounded-2xl font-bold text-white bg-blue-600 active:scale-95 transition-all flex justify-center items-center gap-2 shadow-md shadow-blue-200"
+          className="w-full p-4 rounded-2xl font-bold text-white bg-blue-600 active:scale-95 transition-all flex justify-center items-center gap-2 shadow-md shadow-blue-200 mb-3"
         >
-          Acessar o Caixa (Online) <ArrowRight size={20} />
+          Acessar o Caixa (Operador) <ArrowRight size={20} />
+        </Link>
+        
+        <Link 
+          href="/setup" 
+          className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors py-2"
+        >
+          Sou Dono de Loja (Conectar Aparelho)
         </Link>
       </div>
     </main>

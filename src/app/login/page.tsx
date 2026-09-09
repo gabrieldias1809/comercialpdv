@@ -18,6 +18,7 @@ export default function LoginPage() {
         if (count === 0) {
           await db.operators.add({
             pin: '0000',
+            storeId: 'demo-store',
             name: 'Gerente',
             role: 'admin'
           });

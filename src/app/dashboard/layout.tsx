@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PlusCircle, FileText, LogOut, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SyncManager } from "@/components/SyncManager";
 
 export default function DashboardLayout({
   children,
@@ -39,6 +40,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
+      <SyncManager />
       {/* Header */}
       <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex flex-col">

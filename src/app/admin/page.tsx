@@ -42,8 +42,11 @@ export default function AdminPage() {
         return;
       }
 
+      const storeId = localStorage.getItem("storeId") || 'demo-store';
+
       await db.operators.add({
         pin,
+        storeId,
         name: name.trim(),
         role
       });
