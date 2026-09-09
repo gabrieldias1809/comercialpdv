@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 
 export type PaymentMethod = 'Dinheiro' | 'PIX' | 'Débito' | 'Crédito';
+export type OperatorRole = 'admin' | 'operator';
 
 export interface SaleItem {
   id: string;
@@ -24,19 +25,30 @@ export interface SaleTransaction {
   synced: boolean;
 }
 
+export interface Operator {
+  pin: string;
+  name: string;
+  role: OperatorRole;
+}
+
 const db = new Dexie('MercadinhoDB') as Dexie & {
-  transactions: EntityTable<
-    SaleTransaction,
-    'id'
-  >;
+  transactions: EntityTable<SaleTransaction, 'id'>;
+  operators: EntityTable<Operator, 'pin'>;
 };
 
-// Schema declaration: only indexed fields need to be specified.
-// We keep transactions as the store name to avoid breaking the previous IndexedDB
-// if we wanted seamless migration, but since this is MVP we can just bump version and reset,
-// or just use version 2 to add the new indexes.
-db.version(2).stores({
-  transactions: 'id, timestamp, synced, operatorPin' // Removed paymentMethod from top-level index since it's an array now
+// Version 3 adds the operators table
+db.version(3).stores({
+  transactions: 'id, timestamp, synced, operatorPin',
+  operators: 'pin, role'
+});
+
+// Seed default admin operator if none exists
+db.on('populate', () => {
+  db.operators.add({
+    pin: '0000',
+    name: 'Gerente',
+    role: 'admin'
+  });
 });
 
 export { db };

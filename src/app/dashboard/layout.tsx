@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { PlusCircle, FileText, LogOut } from "lucide-react";
+import { PlusCircle, FileText, LogOut, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function DashboardLayout({
@@ -12,24 +12,30 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [pin, setPin] = useState<string | null>(null);
+  const [opName, setOpName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in
     const storedPin = localStorage.getItem("operatorPin");
+    const storedName = localStorage.getItem("operatorName");
+    const storedRole = localStorage.getItem("operatorRole");
+    
     if (!storedPin) {
       router.push("/login");
     } else {
-      setPin(storedPin);
+      setOpName(storedName || "Operador");
+      setIsAdmin(storedRole === 'admin');
     }
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("operatorPin");
+    localStorage.removeItem("operatorName");
+    localStorage.removeItem("operatorRole");
     router.push("/login");
   };
 
-  if (!pin) return null; // Or a loading spinner
+  if (!opName) return null; // Or a loading spinner
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -37,14 +43,26 @@ export default function DashboardLayout({
       <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Operador</span>
-          <span className="font-bold text-slate-800 text-lg">#{pin}</span>
+          <span className="font-bold text-slate-800 text-lg max-w-[150px] truncate">{opName}</span>
         </div>
-        <button 
-          onClick={handleLogout}
-          className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
-        >
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link 
+              href="/admin"
+              className="p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50"
+              title="Painel Gerencial"
+            >
+              <Shield size={20} />
+            </Link>
+          )}
+          <button 
+            onClick={handleLogout}
+            className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
+            title="Sair"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       {/* Main Content Area */}
