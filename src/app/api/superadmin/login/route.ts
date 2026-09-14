@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -34,6 +32,6 @@ export async function POST(req: Request) {
     return res;
   } catch (error: any) {
     console.error("Superadmin Login Error:", error);
-    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno do servidor: " + String(error.message || error) }, { status: 500 });
   }
 }

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { cookies } from "next/headers";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Auth Middleware Helper
 const isAuthenticated = async () => {
@@ -41,7 +39,7 @@ export async function GET() {
     return NextResponse.json({ stores: formattedStores });
   } catch (error: any) {
     console.error("Superadmin Get Stores Error:", error);
-    return NextResponse.json({ error: "Erro ao buscar lojas." }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar lojas: " + String(error.message || error) }, { status: 500 });
   }
 }
 
@@ -76,6 +74,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, store: newStore });
   } catch (error: any) {
     console.error("Superadmin Create Store Error:", error);
-    return NextResponse.json({ error: "Erro interno ao criar loja." }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno ao criar loja: " + String(error.message || error) }, { status: 500 });
   }
 }
