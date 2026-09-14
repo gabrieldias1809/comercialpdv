@@ -1,15 +1,15 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Users, DollarSign, Plus, X, Search, Activity, ShieldCheck } from "lucide-react";
+import { Store, Users, DollarSign, Plus, X, Search, Activity, ShieldCheck, Edit, Trash2, Eye, EyeOff } from "lucide-react";
 
 export default function SuperAdminDashboard() {
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newStoreData, setNewStoreData] = useState({ name: "", email: "", password: "" });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [newStoreData, setNewStoreData] = useState({ id: "", name: "", email: "", password: "" });
   const [creating, setCreating] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const router = useRouter();
 
   useEffect(() => {
@@ -50,13 +50,63 @@ export default function SuperAdminDashboard() {
       if (!res.ok) throw new Error(data.error);
       
       setShowCreateModal(false);
-      setNewStoreData({ name: "", email: "", password: "" });
+      setNewStoreData({ id: "", name: "", email: "", password: "" });
       fetchStores(); // Refresh list
     } catch (error: any) {
       alert(error.message || "Erro ao criar loja");
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleEditStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const res = await fetch("/api/superadmin/stores", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStoreData)
+      });
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error);
+      
+      setShowEditModal(false);
+      setNewStoreData({ id: "", name: "", email: "", password: "" });
+      fetchStores(); // Refresh list
+    } catch (error: any) {
+      alert(error.message || "Erro ao editar loja");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE a loja "${name}" e todos os seus dados?`)) return;
+
+    try {
+      const res = await fetch(`/api/superadmin/stores?id=${id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      fetchStores();
+    } catch (error: any) {
+      alert(error.message || "Erro ao excluir loja");
+    }
+  };
+
+  const togglePassword = (id: string) => {
+    const newVisible = new Set(visiblePasswords);
+    if (newVisible.has(id)) newVisible.delete(id);
+    else newVisible.add(id);
+    setVisiblePasswords(newVisible);
+  };
+
+  const openEditModal = (store: any) => {
+    setNewStoreData({ id: store.id, name: store.name, email: store.email, password: "" });
+    setShowEditModal(true);
   };
 
   if (loading) {
@@ -84,7 +134,10 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
           <button 
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setNewStoreData({ id: "", name: "", email: "", password: "" });
+              setShowCreateModal(true);
+            }}
             className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors self-start md:self-auto"
           >
             <Plus size={20} />
@@ -129,17 +182,30 @@ export default function SuperAdminDashboard() {
               <thead>
                 <tr className="bg-slate-900/50 text-slate-400 text-sm">
                   <th className="p-4 font-medium">Nome da Loja</th>
-                  <th className="p-4 font-medium">E-mail (Setup)</th>
+                  <th className="p-4 font-medium">Acesso (Email / Senha)</th>
                   <th className="p-4 font-medium text-center">Operadores</th>
                   <th className="p-4 font-medium text-center">Nº Transações</th>
                   <th className="p-4 font-medium text-right">Faturamento Total</th>
+                  <th className="p-4 font-medium text-center">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {stores.map((store) => (
                   <tr key={store.id} className="border-t border-slate-700/50 hover:bg-slate-700/20 transition-colors">
                     <td className="p-4 font-medium text-white">{store.name}</td>
-                    <td className="p-4 text-slate-400">{store.email}</td>
+                    <td className="p-4 text-slate-400">
+                      <div className="flex flex-col gap-1">
+                        <span>{store.email}</span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-mono bg-slate-900 px-2 py-1 rounded text-slate-300">
+                            {visiblePasswords.has(store.id) ? store.password : "••••••••"}
+                          </span>
+                          <button onClick={() => togglePassword(store.id)} className="text-slate-500 hover:text-slate-300">
+                            {visiblePasswords.has(store.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                    </td>
                     <td className="p-4 text-center">
                       <span className="bg-slate-900 text-slate-300 px-3 py-1 rounded-full text-xs border border-slate-700">
                         {store.operatorsCount}
@@ -147,11 +213,21 @@ export default function SuperAdminDashboard() {
                     </td>
                     <td className="p-4 text-center text-slate-300">{store.transactionsCount}</td>
                     <td className="p-4 text-right font-bold text-emerald-400">{formatCurrency(store.totalVolume)}</td>
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => openEditModal(store)} className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Editar Loja">
+                          <Edit size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(store.id, store.name)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Excluir Loja">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {stores.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
+                    <td colSpan={6} className="p-8 text-center text-slate-500">
                       Nenhum cliente cadastrado ainda.
                     </td>
                   </tr>
@@ -163,17 +239,22 @@ export default function SuperAdminDashboard() {
 
       </div>
 
-      {/* Create Modal */}
-      {showCreateModal && (
+      {/* Create / Edit Modal */}
+      {(showCreateModal || showEditModal) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
-            <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <button onClick={() => {
+              setShowCreateModal(false);
+              setShowEditModal(false);
+            }} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X size={24} />
             </button>
             
-            <h2 className="text-xl font-bold text-white mb-6">Cadastrar Novo Cliente</h2>
+            <h2 className="text-xl font-bold text-white mb-6">
+              {showEditModal ? "Editar Cliente" : "Cadastrar Novo Cliente"}
+            </h2>
             
-            <form onSubmit={handleCreateStore} className="flex flex-col gap-4">
+            <form onSubmit={showEditModal ? handleEditStore : handleCreateStore} className="flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1 ml-1">Nome da Loja</label>
                 <input 
@@ -187,7 +268,7 @@ export default function SuperAdminDashboard() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1 ml-1">E-mail de Setup (Login Mestre do Cliente)</label>
+                <label className="block text-sm font-medium text-slate-400 mb-1 ml-1">E-mail de Setup</label>
                 <input 
                   type="email" 
                   required
@@ -199,29 +280,33 @@ export default function SuperAdminDashboard() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1 ml-1">Senha (Login Mestre do Cliente)</label>
+                <label className="block text-sm font-medium text-slate-400 mb-1 ml-1">
+                  {showEditModal ? "Nova Senha (deixe em branco para manter)" : "Senha (Login Mestre)"}
+                </label>
                 <input 
-                  type="password" 
-                  required
+                  type="text" 
+                  required={!showEditModal}
                   value={newStoreData.password}
                   onChange={e => setNewStoreData({...newStoreData, password: e.target.value})}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
-                  placeholder="Senha forte"
+                  placeholder={showEditModal ? "Digite apenas se quiser alterar" : "Senha forte"}
                 />
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl mt-2">
-                <p className="text-xs text-blue-300">
-                  O cliente usará este e-mail e senha no aplicativo para conectar o caixa dele à nuvem. Depois ele poderá criar os próprios PINs de funcionários.
-                </p>
-              </div>
+              {!showEditModal && (
+                <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl mt-2">
+                  <p className="text-xs text-blue-300">
+                    O cliente usará este e-mail e senha no aplicativo para conectar o caixa dele à nuvem. Depois ele poderá criar os próprios PINs de funcionários.
+                  </p>
+                </div>
+              )}
 
               <button 
                 type="submit"
                 disabled={creating}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold p-4 rounded-xl mt-4 transition-colors disabled:opacity-50"
               >
-                {creating ? "Cadastrando..." : "Confirmar Cadastro"}
+                {creating ? "Processando..." : (showEditModal ? "Salvar Alterações" : "Confirmar Cadastro")}
               </button>
             </form>
           </div>
