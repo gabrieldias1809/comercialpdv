@@ -9,7 +9,7 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [newStoreData, setNewStoreData] = useState({ id: "", name: "", email: "", password: "" });
+  const [newStoreData, setNewStoreData] = useState({ id: "", name: "", email: "", password: "", adminPin: "" });
   const [creating, setCreating] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function SuperAdminDashboard() {
       if (!res.ok) throw new Error(data.error);
       
       setShowCreateModal(false);
-      setNewStoreData({ id: "", name: "", email: "", password: "" });
+      setNewStoreData({ id: "", name: "", email: "", password: "", adminPin: "" });
       fetchStores(); // Refresh list
     } catch (error: any) {
       alert(error.message || "Erro ao criar loja");
@@ -75,7 +75,7 @@ export default function SuperAdminDashboard() {
       if (!res.ok) throw new Error(data.error);
       
       setShowEditModal(false);
-      setNewStoreData({ id: "", name: "", email: "", password: "" });
+      setNewStoreData({ id: "", name: "", email: "", password: "", adminPin: "" });
       fetchStores(); // Refresh list
     } catch (error: any) {
       alert(error.message || "Erro ao editar loja");
@@ -107,7 +107,7 @@ export default function SuperAdminDashboard() {
   };
 
   const openEditModal = (store: any) => {
-    setNewStoreData({ id: store.id, name: store.name, email: store.email, password: "" });
+    setNewStoreData({ id: store.id, name: store.name, email: store.email, password: "", adminPin: store.adminPin !== 'Não definido' ? store.adminPin : "" });
     setShowEditModal(true);
   };
 
@@ -137,7 +137,7 @@ export default function SuperAdminDashboard() {
           </div>
           <button 
             onClick={() => {
-              setNewStoreData({ id: "", name: "", email: "", password: "" });
+              setNewStoreData({ id: "", name: "", email: "", password: "", adminPin: "" });
               setShowCreateModal(true);
             }}
             className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors self-start md:self-auto"
@@ -184,7 +184,7 @@ export default function SuperAdminDashboard() {
               <thead>
                 <tr className="bg-slate-900/50 text-slate-400 text-sm">
                   <th className="p-4 font-medium">Nome da Loja</th>
-                  <th className="p-4 font-medium">Acesso (Email / Senha)</th>
+                  <th className="p-4 font-medium">Acesso (Email / Senha / PIN)</th>
                   <th className="p-4 font-medium text-center">Operadores</th>
                   <th className="p-4 font-medium text-center">Nº Transações</th>
                   <th className="p-4 font-medium text-right">Faturamento Total</th>
@@ -200,7 +200,10 @@ export default function SuperAdminDashboard() {
                         <span>{store.email}</span>
                         <div className="flex items-center gap-2 text-xs">
                           <span className="font-mono bg-slate-900 px-2 py-1 rounded text-slate-300">
-                            {visiblePasswords.has(store.id) ? store.password : "••••••••"}
+                            Senha: {visiblePasswords.has(store.id) ? store.password : "••••••••"}
+                          </span>
+                          <span className="font-mono bg-emerald-900/30 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded">
+                            PIN Gerente: {visiblePasswords.has(store.id) ? store.adminPin : "••••"}
                           </span>
                           <button onClick={() => togglePassword(store.id)} className="text-slate-500 hover:text-slate-300">
                             {visiblePasswords.has(store.id) ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -295,10 +298,28 @@ export default function SuperAdminDashboard() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1 ml-1">
+                  PIN do Gerente (Caixa)
+                </label>
+                <input 
+                  type="text" 
+                  maxLength={4}
+                  required
+                  value={newStoreData.adminPin}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').substring(0, 4);
+                    setNewStoreData({...newStoreData, adminPin: val});
+                  }}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-emerald-500 font-mono tracking-widest"
+                  placeholder="Ex: 0000"
+                />
+              </div>
+
               {!showEditModal && (
                 <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl mt-2">
                   <p className="text-xs text-blue-300">
-                    O cliente usará este e-mail e senha no aplicativo para conectar o caixa dele à nuvem. Depois ele poderá criar os próprios PINs de funcionários.
+                    O cliente usará o e-mail e senha no aplicativo para conectar. O PIN do Gerente será usado para acessar o painel de vendas pela primeira vez.
                   </p>
                 </div>
               )}

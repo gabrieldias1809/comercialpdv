@@ -21,6 +21,10 @@ export async function GET() {
         },
         transactions: {
           select: { totalAmount: true }
+        },
+        operators: {
+          where: { role: 'admin' },
+          take: 1
         }
       },
       orderBy: { createdAt: "desc" }
@@ -31,6 +35,7 @@ export async function GET() {
       name: store.name,
       email: store.email,
       password: Buffer.from(store.passwordHash, 'base64').toString('utf-8'),
+      adminPin: store.operators[0]?.pin || 'Não definido',
       createdAt: store.createdAt,
       operatorsCount: store._count.operators,
       transactionsCount: store._count.transactions,
@@ -50,10 +55,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, adminPin } = await req.json();
 
-    if (!name || !email || !password) {
-      return NextResponse.json({ error: "Nome, e-mail e senha são obrigatórios." }, { status: 400 });
+    if (!name || !email || !password || !adminPin) {
+      return NextResponse.json({ error: "Nome, e-mail, senha e PIN do Gerente são obrigatórios." }, { status: 400 });
     }
 
     const existingStore = await prisma.store.findUnique({ where: { email } });
@@ -69,6 +74,13 @@ export async function POST(req: Request) {
         name,
         email,
         passwordHash,
+        operators: {
+          create: {
+            pin: adminPin,
+            name: "Gerente",
+            role: "admin"
+          }
+        }
       }
     });
 
@@ -85,10 +97,10 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { id, name, email, password } = await req.json();
+    const { id, name, email, password, adminPin } = await req.json();
 
-    if (!id || !name || !email) {
-      return NextResponse.json({ error: "ID, nome e e-mail são obrigatórios." }, { status: 400 });
+    if (!id || !name || !email || !adminPin) {
+      return NextResponse.json({ error: "ID, nome, e-mail e PIN do Gerente são obrigatórios." }, { status: 400 });
     }
 
     const dataToUpdate: any = { name, email };
@@ -101,6 +113,27 @@ export async function PUT(req: Request) {
       where: { id },
       data: dataToUpdate
     });
+
+    // Update or create the admin operator
+    const adminOp = await prisma.operator.findFirst({
+      where: { storeId: id, role: 'admin' }
+    });
+
+    if (adminOp) {
+      if (adminOp.pin !== adminPin) {
+        // Since pin is part of composite key @@id([pin, storeId]), we must delete and recreate it if we change the PIN.
+        await prisma.operator.delete({
+          where: { pin_storeId: { pin: adminOp.pin, storeId: id } }
+        });
+        await prisma.operator.create({
+          data: { pin: adminPin, storeId: id, name: adminOp.name, role: 'admin' }
+        });
+      }
+    } else {
+      await prisma.operator.create({
+        data: { pin: adminPin, storeId: id, name: "Gerente", role: "admin" }
+      });
+    }
 
     return NextResponse.json({ success: true, store: updatedStore });
   } catch (error: any) {
