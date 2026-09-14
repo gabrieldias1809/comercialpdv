@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     }
 
     // Note: Em produção, usar bcrypt.compare
-    if (store.passwordHash !== password) {
+    const expectedHash = Buffer.from(password).toString("base64");
+    if (store.passwordHash !== expectedHash && store.passwordHash !== password) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
 
