@@ -33,15 +33,30 @@ export interface Operator {
   role: OperatorRole;
 }
 
+export type CashEventType = 'OPEN' | 'BLEED' | 'CLOSE';
+
+export interface CashEvent {
+  id: string;
+  storeId: string;
+  operatorPin: string;
+  type: CashEventType;
+  amount: number;
+  note?: string;
+  timestamp: Date;
+  synced: boolean;
+}
+
 const db = new Dexie('MercadinhoDB') as Dexie & {
   transactions: EntityTable<SaleTransaction, 'id'>;
   operators: EntityTable<Operator, 'pin'>;
+  cashEvents: EntityTable<CashEvent, 'id'>;
 };
 
-// Version 4 adds storeId
-db.version(4).stores({
+// Version 5 adds cashEvents
+db.version(5).stores({
   transactions: 'id, storeId, timestamp, synced, operatorPin',
-  operators: 'pin, storeId, role'
+  operators: 'pin, storeId, role',
+  cashEvents: 'id, storeId, type, timestamp, synced, operatorPin'
 });
 
 // Seed default admin operator if none exists

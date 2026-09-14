@@ -3,21 +3,24 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { storeId, transactions } = await request.json();
+    const { storeId, transactions, cashEvents } = await request.json();
 
-    if (!storeId || !transactions || !Array.isArray(transactions)) {
-      return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
+    if (!storeId) {
+      return NextResponse.json({ error: "StoreId inválido" }, { status: 400 });
     }
+    
+    const txsToSync = Array.isArray(transactions) ? transactions : [];
+    const evsToSync = Array.isArray(cashEvents) ? cashEvents : [];
 
-    if (transactions.length === 0) {
-      return NextResponse.json({ success: true, message: "Nenhuma transação para sincronizar" });
+    if (txsToSync.length === 0 && evsToSync.length === 0) {
+      return NextResponse.json({ success: true, message: "Nenhum dado para sincronizar" });
     }
 
     try {
       // Execute in a transaction to ensure all or nothing
-      await prisma.$transaction(
-        transactions.map((tx: any) => 
-          prisma.transaction.create({
+      await prisma.$transaction(async (prismaTx) => {
+        for (const tx of txsToSync) {
+          await prismaTx.transaction.create({
             data: {
               id: tx.id,
               totalAmount: tx.totalAmount,
@@ -37,9 +40,23 @@ export async function POST(request: Request) {
                 }))
               }
             }
-          })
-        )
-      );
+          });
+        }
+        
+        for (const ev of evsToSync) {
+          await prismaTx.cashEvent.create({
+            data: {
+              id: ev.id,
+              storeId: ev.storeId || storeId,
+              operatorPin: ev.operatorPin,
+              type: ev.type,
+              amount: ev.amount,
+              note: ev.note,
+              timestamp: new Date(ev.timestamp)
+            }
+          });
+        }
+      });
     } catch (dbError) {
       console.warn("Banco de dados não configurado, ignorando inserção real", dbError);
       // Fallback: Just return success to allow the local app to mark as synced for demo

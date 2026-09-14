@@ -82,11 +82,18 @@ export default function DashboardLayout({
           <span className="text-xs font-medium">Vender</span>
         </Link>
         <Link 
+          href="/dashboard/caixa"
+          className={`flex-1 flex flex-col items-center justify-center py-3 ${pathname === '/dashboard/caixa' ? 'text-blue-600' : 'text-slate-400'}`}
+        >
+          <Shield size={24} className="mb-1" />
+          <span className="text-xs font-medium">Sangria</span>
+        </Link>
+        <Link 
           href="/dashboard/fechamento"
           className={`flex-1 flex flex-col items-center justify-center py-3 ${pathname === '/dashboard/fechamento' ? 'text-blue-600' : 'text-slate-400'}`}
         >
           <FileText size={24} className="mb-1" />
-          <span className="text-xs font-medium">Caixa</span>
+          <span className="text-xs font-medium">Fechamento</span>
         </Link>
       </nav>
     </div>

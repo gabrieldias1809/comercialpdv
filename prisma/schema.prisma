@@ -17,6 +17,7 @@ model Store {
   
   operators    Operator[]
   transactions Transaction[]
+  cashEvents   CashEvent[]
 }
 
 model Operator {
@@ -60,4 +61,18 @@ model Payment {
   transactionId String
   
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model CashEvent {
+  id           String   @id
+  storeId      String
+  operatorPin  String
+  type         String
+  amount       Float
+  note         String?
+  timestamp    DateTime
+  
+  store        Store    @relation(fields: [storeId], references: [id])
+  
+  @@index([storeId])
 }

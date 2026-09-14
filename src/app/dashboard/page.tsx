@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { db, PaymentMethod, SaleItem, SalePayment } from "@/lib/db";
-import { Banknote, CreditCard, Smartphone, CheckCircle2, Delete, Plus, ShoppingCart, Trash2, ArrowRight, X } from "lucide-react";
+import { db, PaymentMethod, SaleItem, SalePayment, CashEvent, CashEventType } from "@/lib/db";
+import { Banknote, CreditCard, Smartphone, CheckCircle2, Delete, Plus, ShoppingCart, Trash2, ArrowRight, X, Lock } from "lucide-react";
 
 export default function DashboardPage() {
   const [amountStr, setAmountStr] = useState("0");
@@ -18,6 +18,76 @@ export default function DashboardPage() {
   // Payment state
   const [payments, setPayments] = useState<SalePayment[]>([]);
   const [payAmountStr, setPayAmountStr] = useState("0");
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [changeAmount, setChangeAmount] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState<SalePayment[]>([]);
+
+  // Caixa state
+  const [isRegisterClosed, setIsRegisterClosed] = useState(false);
+  const [initialCashStr, setInitialCashStr] = useState("0");
+  const [checkingRegister, setCheckingRegister] = useState(true);
+
+  // Initial check
+  import { useEffect } from "react";
+  
+  useEffect(() => {
+    checkRegisterStatus();
+  }, []);
+
+  const checkRegisterStatus = async () => {
+    setCheckingRegister(true);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const events = await db.cashEvents
+      .where('timestamp')
+      .aboveOrEqual(today)
+      .sortBy('timestamp');
+
+    if (events.length === 0) {
+      setIsRegisterClosed(true);
+    } else {
+      const lastEvent = events[events.length - 1];
+      if (lastEvent.type === 'CLOSE') {
+        setIsRegisterClosed(true);
+      } else {
+        setIsRegisterClosed(false);
+      }
+    }
+    setCheckingRegister(false);
+  };
+
+  const handleOpenRegister = async () => {
+    const amount = parseInt(initialCashStr) / 100;
+    const operatorPin = localStorage.getItem("operatorPin") || "0000";
+    const storeId = localStorage.getItem("storeId") || "demo-store";
+
+    await db.cashEvents.add({
+      id: uuidv4(),
+      storeId,
+      operatorPin,
+      type: 'OPEN',
+      amount,
+      note: 'Abertura de Caixa',
+      timestamp: new Date(),
+      synced: false
+    });
+
+    setIsRegisterClosed(false);
+    setInitialCashStr("0");
+  };
+
+  const handleKeyPressCash = (num: string) => {
+    setInitialCashStr(prev => {
+      if (prev === "0") return num;
+      if (prev.length >= 8) return prev;
+      return prev + num;
+    });
+  };
+
+  const handleDeleteCash = () => {
+    setInitialCashStr(prev => (prev.length <= 1 ? "0" : prev.slice(0, -1)));
+  };
 
   // Format utility
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -74,8 +144,17 @@ export default function DashboardPage() {
 
   const addPayment = async (method: PaymentMethod) => {
     let val = parseInt(payAmountStr) / 100;
-    if (val <= 0) val = remaining; // Se estiver zerado, tenta pagar o total restante (atalho útil)
-    if (val > remaining) val = remaining; // Não permite troco no sistema por enquanto, ajusta ao limite
+    if (val <= 0) val = remaining; // Se estiver zerado, tenta pagar o total restante
+    
+    let change = 0;
+    if (method === "Dinheiro" && val > remaining) {
+      change = val - remaining;
+      val = remaining; // O valor registrado no caixa é apenas o que faltava pagar
+      setChangeAmount(change);
+      setShowChangeModal(true);
+    } else if (val > remaining) {
+      val = remaining; // Para cartões/PIX, não há troco, corta no limite
+    }
     
     const newPayment = { id: uuidv4(), method, amount: val };
     const newPaymentsList = [...payments, newPayment];
@@ -85,9 +164,12 @@ export default function DashboardPage() {
 
     const newTotalPaid = newPaymentsList.reduce((acc, curr) => acc + curr.amount, 0);
 
-    // Se atingiu o total, finaliza a venda automaticamente
     if (newTotalPaid >= totalAmount) {
-      await finalizeSale(newPaymentsList);
+      if (change > 0) {
+        setPendingPayments(newPaymentsList);
+      } else {
+        await finalizeSale(newPaymentsList);
+      }
     }
   };
 
@@ -109,6 +191,7 @@ export default function DashboardPage() {
 
       // Cleanup & Show Success
       setShowPayment(false);
+      setShowChangeModal(false);
       setShowSuccess(true);
       
       setTimeout(() => {
@@ -122,6 +205,57 @@ export default function DashboardPage() {
       alert("Erro ao salvar a venda.");
     }
   };
+
+  // -------------------------------------------------------------
+  // RENDER: Modal Abertura de Caixa
+  // -------------------------------------------------------------
+  if (checkingRegister) {
+    return <div className="p-4 flex flex-col items-center justify-center h-full min-h-[calc(100vh-140px)]"><div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>;
+  }
+
+  if (isRegisterClosed) {
+    return (
+      <div className="p-4 flex flex-col h-full max-w-md mx-auto relative bg-slate-50 min-h-[calc(100vh-140px)] justify-center">
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4">
+            <Lock size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Caixa Fechado</h2>
+          <p className="text-slate-500 text-sm mb-6">Informe o valor do Fundo de Caixa (Troco Inicial) para começar o dia.</p>
+          
+          <div className="bg-slate-50 rounded-2xl p-4 w-full mb-6 border border-slate-100">
+            <span className="text-4xl font-bold text-slate-800 tracking-tight">
+              {formatCurrency(parseInt(initialCashStr) / 100)}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-6 w-full">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button key={num} onClick={() => handleKeyPressCash(num.toString())} className="h-12 rounded-2xl bg-white shadow-sm border border-slate-100 text-xl font-semibold text-slate-800 active:bg-slate-100 active:scale-95 transition-all">
+                {num}
+              </button>
+            ))}
+            <button onClick={() => handleKeyPressCash("00")} className="h-12 rounded-2xl bg-white shadow-sm border border-slate-100 text-lg font-semibold text-slate-800 active:bg-slate-100 active:scale-95 transition-all">
+              00
+            </button>
+            <button onClick={() => handleKeyPressCash("0")} className="h-12 rounded-2xl bg-white shadow-sm border border-slate-100 text-xl font-semibold text-slate-800 active:bg-slate-100 active:scale-95 transition-all">
+              0
+            </button>
+            <button onClick={handleDeleteCash} className="h-12 rounded-2xl bg-slate-200 text-slate-600 active:bg-slate-300 active:scale-95 transition-all flex items-center justify-center">
+              <Delete size={20} />
+            </button>
+          </div>
+
+          <button 
+            onClick={handleOpenRegister}
+            className="w-full p-4 bg-orange-500 text-white rounded-2xl font-bold text-lg active:scale-95 transition-all shadow-md shadow-orange-200"
+          >
+            Abrir Caixa
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // -------------------------------------------------------------
   // RENDER: Modal de Revisão
@@ -170,6 +304,28 @@ export default function DashboardPage() {
   // RENDER: Modal de Pagamento Misto
   // -------------------------------------------------------------
   if (showPayment) {
+    if (showChangeModal) {
+      return (
+        <div className="p-4 flex flex-col h-full max-w-md mx-auto relative bg-slate-50 min-h-[calc(100vh-140px)] justify-center">
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+              <Banknote size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-slate-500 mb-2">Troco a Devolver:</h2>
+            <p className="text-5xl font-bold text-slate-800 tracking-tight mb-8">
+              {formatCurrency(changeAmount)}
+            </p>
+            <button 
+              onClick={() => finalizeSale(pendingPayments)}
+              className="w-full p-4 bg-blue-600 text-white rounded-2xl font-bold text-lg active:scale-95 transition-all shadow-md shadow-blue-200"
+            >
+              Concluir Venda
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="p-4 flex flex-col h-full max-w-md mx-auto relative bg-slate-50 min-h-[calc(100vh-140px)]">
         <div className="flex justify-between items-center mb-4">
