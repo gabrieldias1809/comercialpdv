@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { db, PaymentMethod, SaleItem, SalePayment, CashEvent, CashEventType } from "@/lib/db";
 import { Banknote, CreditCard, Smartphone, CheckCircle2, Delete, Plus, ShoppingCart, Trash2, ArrowRight, X, Lock } from "lucide-react";
@@ -28,8 +28,6 @@ export default function DashboardPage() {
   const [checkingRegister, setCheckingRegister] = useState(true);
 
   // Initial check
-  import { useEffect } from "react";
-  
   useEffect(() => {
     checkRegisterStatus();
   }, []);
