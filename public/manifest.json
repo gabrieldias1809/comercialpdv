@@ -2,7 +2,7 @@
   "name": "Mercadinho PDV",
   "short_name": "Mercadinho",
   "description": "Sistema de gestão de caixa offline-first para pequenos comércios",
-  "start_url": "/login",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
