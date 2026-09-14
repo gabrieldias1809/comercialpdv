@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Users, DollarSign, Plus, X, Search, Activity, ShieldCheck, Edit, Trash2, Eye, EyeOff } from "lucide-react";
