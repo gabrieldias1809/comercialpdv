@@ -19,15 +19,26 @@ export default function FechamentoPage() {
   });
   const [loading, setLoading] = useState(true);
 
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Parse the selected date
+      // We use the local timezone by splitting the YYYY-MM-DD
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      
+      const startOfDay = new Date(year, month - 1, day);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(year, month - 1, day);
+      endOfDay.setHours(23, 59, 59, 999);
 
       const txs = await db.transactions
         .where('timestamp')
-        .aboveOrEqual(today)
+        .between(startOfDay, endOfDay, true, true)
         .toArray();
 
       setTransactions(txs);
@@ -36,7 +47,6 @@ export default function FechamentoPage() {
       const b: Breakdown = { Dinheiro: 0, PIX: 0, Débito: 0, Crédito: 0 };
 
       txs.forEach((tx) => {
-        // Ensure old records from previous MVP test don't return undefined and cause NaN
         const currentTotal = tx.totalAmount || (tx as any).amount || 0;
         sum += currentTotal;
         
@@ -45,7 +55,6 @@ export default function FechamentoPage() {
               b[payment.method] += payment.amount || 0;
            });
         } else if ((tx as any).paymentMethod && (tx as any).amount) {
-           // Fallback for old schema
            b[(tx as any).paymentMethod as PaymentMethod] += (tx as any).amount;
         }
       });
@@ -61,23 +70,26 @@ export default function FechamentoPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedDate]); // Re-run when date changes
 
   const formatCurrency = (val: number) =>
     val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
     <div className="p-4 flex flex-col max-w-md mx-auto relative">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Caixa de Hoje</h1>
-          <p className="text-slate-500 text-sm">
-            {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
-          </p>
+          <h1 className="text-2xl font-bold text-slate-800 mb-1">Fechamento</h1>
+          <input 
+            type="date" 
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="text-slate-500 text-sm bg-slate-100 px-3 py-1.5 rounded-lg border-none outline-none font-medium cursor-pointer"
+          />
         </div>
         <button 
           onClick={loadData}
-          className="p-2 bg-white rounded-full shadow-sm text-slate-400 active:scale-95 transition-all"
+          className="p-2 bg-white rounded-full shadow-sm text-slate-400 active:scale-95 transition-all mt-1"
         >
           <RefreshCw size={20} className={loading ? "animate-spin text-blue-500" : ""} />
         </button>
